@@ -1,0 +1,64 @@
+Your troubleshooting steps are spot-on and follow the exact systematic flow SRE and Linux interviewers look for. 
+When CPU usage is low (20%) yet the server feels sluggish, the bottleneck is almost always Disk I/O wait,
+ Memory pressure / swapping, Network latency, or Kernel/Application lock contention.
+Here is a polished, interview-ready version of your answer along with a few extra checks that will make your 
+response stand out.
+
+How to Explain the Root Causes (Opening Summary)
+
+"When a Linux server becomes unresponsive despite CPU utilization sitting at 20%, the 
+CPU is mostly idle because processes are blocked waiting on non-CPU resources. 
+The primary suspects are high Disk I/O wait, severe memory exhaustion causing heavy 
+swapping, network or DNS bottlenecks, or stuck processes in uninterruptible sleep (D state)."
+
+Step-by-Step Troubleshooting Flow
+
+
+1. Check Load Average & CPU Wait States (uptime, top / vmstat)
+
+• Commands: uptime, vmstat 1
+• What to look for: Compare the 1, 5, and 15-minute load averages against the number of CPU cores (nproc). In Linux,
+ load average includes both runnable processes and processes waiting on uninterruptible I/O.
+• Key metric: In top or vmstat 1, check the wa (I/O wait) percentage. If us/sy are low (20%) but wa is high, the CPU is
+ sitting idle waiting for slow storage.
+
+2. Check Memory Pressure & Swap Thrashing (free -m)
+
+• Commands: free -m, vmstat 1
+• What to look for: Look at the available column (not just free) and check Swap usage.
+• Why it matters: If available RAM is near zero and si/so (swap in/swap out) in vmstat are actively climbing, the kernel
+ is thrashing—constantly moving pages between slow disk swap and RAM. Also check dmesg -T | grep -i oom to see if the
+  Out-Of-Memory killer is terminating processes.
+
+3. Check Disk I/O Saturation & Latency (iostat, iotop)
+
+• Commands: iostat -xz 1, iotop -o
+• What to look for:
+	• %util: Values near 100% indicate the storage device is saturated.
+	• await: High read/write latency in milliseconds means disk requests are queuing up.
+	• iotop -o: Pinpoints the exact process generating heavy disk reads or writes.
+
+4. Inspect Processes & D-State Tasks (ps, top)
+
+• Commands:bash
+ps aux --sort=-%mem | head -n 10
+ps -eo pid,user,stat,%mem,%cpu,comm | grep " D"
+Use code with caution.
+• What to look for: Identify runaway memory consumers and check for processes in D state (uninterruptible sleep), 
+which typically happens when a process is stuck waiting on disk I/O or a hung NFS/network mount.
+
+5. Check Disk Space & Inode Exhaustion (df)
+
+• Commands: df -h and df -i
+• What to look for: A full /var or / partition (100% Use%) stalls logging, databases, and temporary file writes. 
+Even if df -h shows free space, df -i checks whether 100% of inodes are used up by millions of tiny files, which 
+prevents new files from being created.
+
+6. Bonus SRE Checks (What Sets a Senior Answer Apart)
+
+• Steal Time (%st) on Cloud VMs: In top, check st (steal time). On AWS/cloud instances, high %st means the underlying 
+hypervisor is throttling your VM or noisy neighbors are saturating host resources.
+• Network & DNS Latency: Run ss -s or netstat -an to check for connection exhaustion, or check /var/log/syslog /
+ journalctl -xe for hardware, filesystem, or network errors.
+Would you like me to turn this into a clean GitHub Markdown file to add to your Linux troubleshooting repo, or practice 
+a follow-up scenario (such as how to safely handle a process stuck in D state or high swap usage)?
