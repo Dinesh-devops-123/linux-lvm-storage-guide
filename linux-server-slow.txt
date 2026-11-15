@@ -42,7 +42,7 @@ Step-by-Step Troubleshooting Flow
 
 • Commands:bash
 ps aux --sort=-%mem | head -n 10
-ps -eo pid,user,stat,%mem,%cpu,comm | grep " D"
+ps -eo pid,user,stat,%mem,%cpu,cmd --sort=-%cpu | head 
 Use code with caution.
 • What to look for: Identify runaway memory consumers and check for processes in D state (uninterruptible sleep), 
 which typically happens when a process is stuck waiting on disk I/O or a hung NFS/network mount.
